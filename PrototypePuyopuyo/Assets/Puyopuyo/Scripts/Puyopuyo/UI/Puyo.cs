@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 
 namespace Puyopuyo.UI {
     public interface IPuyo {
@@ -9,6 +10,8 @@ namespace Puyopuyo.UI {
         GameObject GameObject { get; }
         public IPuyo Partner { get; }
         Rigidbody Rigidbody { get; }
+        int MaterialIndex { get; }
+        void AdaptRandomMaterial();
         void RecognizePartner(IPuyo partner);
         void Stop();
         void Restart();
@@ -31,14 +34,20 @@ namespace Puyopuyo.UI {
     {
         private float moveFallAmount = -0.5f;
         private Domain.IPuyoBodyClock puyoBodyClock;
+
         public Domain.IPuyoStateMachine State { get; private set; }
         public bool IsGrounded { get; private set; }
         public GameObject GameObject => gameObject;
+        public Rigidbody Rigidbody { get; private set; }
         public IPuyo Partner { get; private set; }
+        public int MaterialIndex { get; private set; }
+
         private bool hasPartner => Partner != null;
         private new Collider collider;
-        public Rigidbody Rigidbody { get; private set; }
         private bool isFreeFall;
+        [SerializeField]
+        private List<Material> materials;
+        private Material[] adaptedMaterials;
 
         protected void Awake()
         {
@@ -47,6 +56,15 @@ namespace Puyopuyo.UI {
             collider = gameObject.GetComponent<Collider>();
             Rigidbody = gameObject.GetComponent<Rigidbody>();
             IsGrounded = false;
+        }
+
+        public void AdaptRandomMaterial()
+        {
+            MaterialIndex = UnityEngine.Random.Range(0, this.materials.Count);
+            var materials = GetComponent<Renderer>().materials;
+            materials[0] = this.materials[MaterialIndex];
+            GetComponent<Renderer>().materials = materials;
+            adaptedMaterials = materials;
         }
 
         public void RecognizePartner(IPuyo partner)
@@ -119,14 +137,6 @@ namespace Puyopuyo.UI {
             State.ToStaying();
             Rigidbody.isKinematic = false;
             isFreeFall = true;
-            if (!IsGrounded) {
-                if (IsVerticalWithPartner() && Partner.IsGrounded)
-                {
-                    IsGrounded = true;
-                    return;
-                }
-                FreeFall();
-            }
         }
 
         private void AutoDown()
@@ -174,6 +184,7 @@ namespace Puyopuyo.UI {
             puyoObj.transform.SetParent(transform);
             puyoObj.transform.position = transform.position + offset;
             puyoObj.transform.localScale = new Vector3(0f, 0f, 0f);
+            puyoObj.GetComponent<Renderer>().materials = adaptedMaterials;
             return puyoObj;
         }
 
